@@ -19,8 +19,14 @@
 
 #ifdef _WIN32
 // NOMINMAX：阻止 windows.h 定义 min / max 宏，否则会污染整个工程。
+// 加 #ifndef 是因为 MinGW 的 <bits/os_defines.h> 已经先定义过它了，
+// 直接重复 #define 会被 -Wall 报 'NOMINMAX' redefined。
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 #endif
 

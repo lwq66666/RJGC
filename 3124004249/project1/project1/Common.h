@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace paper_check {
@@ -15,6 +16,10 @@ using CodePointList = std::vector<CodePoint>;
 using ByteString = std::string;  // 一段原始字节，可能是多字节 UTF-8
 using Token = ByteString;        // 一个词元，用字节串表示，方便当 map 的 key
 using TokenList = std::vector<Token>;
+
+// 词元 -> 出现次数。用 unordered_map 而不是 map：这里不需要有序，
+// 而且哈希表的插入更快。
+using TermFrequency = std::unordered_map<Token, std::int64_t>;
 
 using Fingerprint = std::uint64_t;  // SimHash 指纹
 

@@ -40,31 +40,31 @@ CodePointList Decode(const ByteString& bytes) {
         } else if ((first & 0xF8U) == 0xF0U) {  // 11110xxx：四字节
             continuation_count = 3;
             code_point = static_cast<CodePoint>(first & 0x07U);
-        } else {  // 非法首字节
+        } else {  // 非法首字节（孤立的续字节、0xF8 以上），一个字节产出一个替换字符
             code_points.push_back(kReplacementCharacter);
             ++index;
             continue;
         }
 
-        if (index + continuation_count >= total) {  // 文件在汉字中间被截断
+        // 算出「最长有效子序列」的长度：首字节 + 后面连续合法的续字节。
+        // 这一步同时覆盖两种出错情况：文件在汉字中间被截断、续字节格式不对。
+        // 按 Unicode 的建议，整个最长有效子序列只产出一个替换字符，
+        // 而不是每个字节各产一个。因为只消费续字节，
+        // 所以不会误吞后面可能是合法起始字节的那个字节。
+        std::size_t available = 1;
+        while (available <= continuation_count && index + available < total &&
+               IsContinuationByte(cursor[index + available])) {
+            ++available;
+        }
+
+        if (available != continuation_count + 1) {
             code_points.push_back(kReplacementCharacter);
-            ++index;
+            index += available;
             continue;
         }
 
-        bool well_formed = true;
         for (std::size_t offset = 1; offset <= continuation_count; ++offset) {
-            const unsigned char byte = cursor[index + offset];
-            if (!IsContinuationByte(byte)) {
-                well_formed = false;
-                break;
-            }
-            code_point = (code_point << 6) | static_cast<CodePoint>(byte & 0x3FU);
-        }
-        if (!well_formed) {
-            code_points.push_back(kReplacementCharacter);
-            ++index;
-            continue;
+            code_point = (code_point << 6) | static_cast<CodePoint>(cursor[index + offset] & 0x3FU);
         }
 
         // 再过两道语义检查：UTF-16 代理区不是合法标量值；大于 U+10FFFF 超出 Unicode 范围。
@@ -74,7 +74,7 @@ CodePointList Decode(const ByteString& bytes) {
         const bool is_out_of_range = (code_point > 0x10FFFFU);
         if (is_overlong || is_surrogate || is_out_of_range) {
             code_points.push_back(kReplacementCharacter);
-            ++index;
+            index += continuation_count + 1;
             continue;
         }
 

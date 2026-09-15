@@ -15,10 +15,11 @@ namespace {
 bool TryComputeFingerprint(const Tokenizer& tokenizer, const SimHasher& hasher,
                            const ByteString& bytes, Fingerprint& fingerprint_out) {
     const CodePointList code_points = unicode::Decode(bytes);
-    const TokenList tokens = tokenizer.Split(code_points);
+    // 走 CountTokens 而不是 Split：边分词边计数，省掉一个上百万元素的中间数组。
+    const TermFrequency frequencies = tokenizer.CountTokens(code_points);
 
     try {
-        fingerprint_out = hasher.Compute(tokens);
+        fingerprint_out = hasher.Compute(frequencies);
         return true;
     } catch (const EmptyDocumentError&) {
         fingerprint_out = 0;

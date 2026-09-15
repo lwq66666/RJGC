@@ -9,9 +9,11 @@ class SimHasher {
 public:
     explicit SimHasher(int fingerprint_bits = kDefaultFingerprintBits);
 
-    // 词元列表 -> 指纹：先统计词频作为权重，再按每个哈希位的 1/0 加减权重，
-    // 最后按累加值的符号决定该位取值。词元为空时抛 EmptyDocumentError。
+    // 便捷重载：先统计词频再转调下面那个。便于测试和对照，代价是要先物化一遍词频表。
     Fingerprint Compute(const TokenList& tokens) const;
+
+    // 主实现：词频表 -> 指纹。词频为空时抛 EmptyDocumentError。
+    Fingerprint Compute(const TermFrequency& frequencies) const;
 
     int BitCount() const noexcept { return bit_count_; }
 
